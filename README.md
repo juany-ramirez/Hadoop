@@ -20,7 +20,7 @@ jar cf wc.jar WordCount*.class
 
 #### Ejecutar
 
-../bin/hadoop jar wc.jar WordCount -Dwordcount.case.sensitive=false ./input ./output
+hadoop jar wc.jar WordCount -Dwordcount.case.sensitive=false ./input ./output
 
 ***
 
