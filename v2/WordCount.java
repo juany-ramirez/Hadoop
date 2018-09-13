@@ -64,17 +64,14 @@ public class WordCount extends Configured implements Tool {
 			return a.compareTo(b) > 0 ? a : b;
 		}
 
-		public String middleTerm(String a, String b, String c) {
-			return a.compareTo(b) > 0 ? (a.compareTo(c) < 0 ? a : b.compareTo(c) > 0 ? b : c)
-					: (a.compareTo(c) > 0 ? a : (b.compareTo(c) < 0 ? b : c));
-		}
-
 		public void map(LongWritable key, Text value, OutputCollector<Text, IntWritable> output, Reporter reporter)
 				throws IOException {
 			String row = (case_sensitive) ? value.toString() : value.toString().toLowerCase();
-			String[] unimportant_words = { "is", "of", "on", "in", "to", "an", "with", "without", "we", "they", "how",
-					"what", "when", "it", "who", "ok", "okay", "do", "does", "can", "cant", "dont", "doesnt", "want",
-					"need", "from", "that", "these", "this", "or", "for", "the", "and", "it" };
+			String[] unimportant_words = { "a", "what", "your", "you", "is", "an", "the", "some", "my", "i", "not", "am", "as", "so",
+			"because", "even", "if", "of", "how", "new", "do", "once", "only", "than", "that", "though", "until", "when",
+			"whenever", "where", "while", "and","either", "or", "neither", "with", "at",
+			"from", "into", "during", "until", "among", "ask", "hn", "upon", "to", "in", "for", "on", "by",
+			"about", "like", "through", "over", "before", "between", "after", "but" };
 
 			for (int i = 33; i < 256; i++) {
 				if ((i > 64 && i < 91) || (i > 96 && i < 123)) {
@@ -154,7 +151,6 @@ public class WordCount extends Configured implements Tool {
 
 			String first_word = "";
 			String second_word = "";
-			String third_word = "";
 			for (int i = 0; i < row_wordset.length; i++) {
 				//one word_collection
 				first_word = row_wordset[i];
@@ -178,31 +174,11 @@ public class WordCount extends Configured implements Tool {
 					word_collection.set(key_word);
 					output.collect(word_collection, one);
 					reporter.incrCounter(Counters.INPUT_WORDS, 1);
-
-					for (int k = j + 1; k < row_wordset.length; k++) {
-						//three words
-						third_word = row_wordset[k];
-
-						if (first_word.equals(third_word) || second_word.equals(third_word)
-								|| first_word.equals(second_word)) {
-							continue;
-						}
-
-						String first = getMin(getMin(first_word, second_word), third_word);
-						String last = getMax(getMax(first_word, second_word), third_word);
-						String middle = middleTerm(first_word, second_word, third_word);
-
-						key_word = first + " " + middle + " " + last;
-						word_collection.set(key_word);
-						output.collect(word_collection, one);
-						reporter.incrCounter(Counters.INPUT_WORDS, 1);
-					}
 				}
 			}
 
 			if ((++repetitions % 100) == 0) {
-				reporter.setStatus(
-						"Finished processing " + repetitions + " records " + "from the input file: " + input_file);
+				reporter.setStatus("Finished processing " + repetitions + " records " + "from the input file: " + input_file);
 			}
 		}
 	}
@@ -280,7 +256,7 @@ public class WordCount extends Configured implements Tool {
 	public static void main(String[] args) throws Exception {
 		int res = ToolRunner.run(new Configuration(), new WordCount(), args);
 
-		System.out.println("LA PALABRA MAS REPETIDA ES: " + most_repeated_words[3] + " :\t" + most_repeated_values[3]);
+		System.out.println("The most repeated word is: '" + most_repeated_words[3] + " " + most_repeated_words[4] + "' => " + most_repeated_values[3] + " times.");
 
 		System.exit(res);
 	}
