@@ -2,8 +2,8 @@ import java.io.*;
 import java.util.*;
 
 import org.apache.hadoop.fs.Path;
-import org.apache.hadoop.conf.*;
 import org.apache.hadoop.filecache.DistributedCache;
+import org.apache.hadoop.conf.*;
 import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapred.*;
 import org.apache.hadoop.util.*;
@@ -17,39 +17,38 @@ public class WordCount extends Configured implements Tool {
 		}
 
 		private final static IntWritable one = new IntWritable(1);
-		private Text word = new Text();
+		private Text word_collection = new Text();
 
-		private boolean caseSensitive = true;
-		private Set<String> patternsToSkip = new HashSet<String>();
+		private boolean case_sensitive = true;
+		private Set<String> patterns_to_skip = new HashSet<String>();
 
-		private long numRecords = 0;
-		private String inputFile;
+		private long repetitions = 0;
+		private String input_file;
 
 		public void configure(JobConf job) {
-			caseSensitive = job.getBoolean("wordcount.case.sensitive", true);
-			inputFile = job.get("map.input.file");
+			case_sensitive = job.getBoolean("wordcount.case.sensitive", true);
+			input_file = job.get("map.input.file");
 
 			if (job.getBoolean("wordcount.skip.patterns", false)) {
-				Path[] patternsFiles = new Path[0];
+				Path[] pattern_files = new Path[0];
 				try {
-					// patternsFiles = job.addCacheFile(inputFile);
-					patternsFiles = DistributedCache.getLocalCacheFiles(job);
+					pattern_files = DistributedCache.getLocalCacheFiles(job);
 				} catch (IOException ioe) {
 					System.err.println(
 							"Caught exception while getting cached files: " + StringUtils.stringifyException(ioe));
 				}
-				for (Path patternsFile : patternsFiles) {
-					parseSkipFile(patternsFile);
+				for (Path patternsFile : pattern_files) {
+					skipFile(patternsFile);
 				}
 			}
 		}
 
-		private void parseSkipFile(Path patternsFile) {
+		private void skipFile(Path patternsFile) {
 			try {
 				BufferedReader fis = new BufferedReader(new FileReader(patternsFile.toString()));
 				String pattern = null;
 				while ((pattern = fis.readLine()) != null) {
-					patternsToSkip.add(pattern);
+					patterns_to_skip.add(pattern);
 				}
 			} catch (IOException ioe) {
 				System.err.println("Caught exception while parsing the cached file '" + patternsFile + "' : "
@@ -57,13 +56,11 @@ public class WordCount extends Configured implements Tool {
 			}
 		}
 
-		public String min(String a, String b) {
-
+		public String getMin(String a, String b) {
 			return a.compareTo(b) > 0 ? b : a;
 		}
 
-		public String max(String a, String b) {
-
+		public String getMax(String a, String b) {
 			return a.compareTo(b) > 0 ? a : b;
 		}
 
@@ -74,69 +71,69 @@ public class WordCount extends Configured implements Tool {
 
 		public void map(LongWritable key, Text value, OutputCollector<Text, IntWritable> output, Reporter reporter)
 				throws IOException {
-			String line = (caseSensitive) ? value.toString() : value.toString().toLowerCase();
-			String[] wordPatterns = { "is", "of", "on", "in", "to", "an", "with", "without", "we", "they", "how",
+			String row = (case_sensitive) ? value.toString() : value.toString().toLowerCase();
+			String[] unimportant_words = { "is", "of", "on", "in", "to", "an", "with", "without", "we", "they", "how",
 					"what", "when", "it", "who", "ok", "okay", "do", "does", "can", "cant", "dont", "doesnt", "want",
 					"need", "from", "that", "these", "this", "or", "for", "the", "and", "it" };
 
 			for (int i = 33; i < 256; i++) {
 				if ((i > 64 && i < 91) || (i > 96 && i < 123)) {
-					char newChar = (char) i;
-					String newPattern = " " + newChar + " ";
+					char ascii_char = (char) i;
+					String important_words = " " + ascii_char + " ";
 
-					line = line.replaceAll(newPattern, " ");
+					row = row.replaceAll(important_words, " ");
 				} else if (i > 47 && i < 58) {
-					char newChar = (char) i;
-					String newPattern = "" + newChar;
+					char ascii_char = (char) i;
+					String important_words = "" + ascii_char;
 
-					line = line.replaceAll(newPattern, "");
+					row = row.replaceAll(important_words, "");
 				} else {
-					char newChar = (char) i;
-					String newPattern = "\\" + newChar;
+					char ascii_char = (char) i;
+					String important_words = "\\" + ascii_char;
 
-					line = line.replaceAll(newPattern, "");
+					row = row.replaceAll(important_words, "");
 				}
 			}
 
-			for (int i = 0; i < wordPatterns.length; i++) {
-				line = line.replaceAll(" " + wordPatterns[i] + " ", " ");
+			for (int i = 0; i < unimportant_words.length; i++) {
+				row = row.replaceAll(" " + unimportant_words[i] + " ", " ");
 			}
 
-			String[] lineWordsTemp = line.split("\\s");
+			String[] row_wordset_test = row.split("\\s");
 			int deleted = 0;
 
-			for (int i = 0; i < wordPatterns.length; i++) {
-				for (int j = 0; j < lineWordsTemp.length; j++) {
-					if (wordPatterns[i].equals(lineWordsTemp[j])) {
-						lineWordsTemp[j] = " ";
+			for (int i = 0; i < unimportant_words.length; i++) {
+				for (int j = 0; j < row_wordset_test.length; j++) {
+					if (unimportant_words[i].equals(row_wordset_test[j])) {
+						row_wordset_test[j] = " ";
 						deleted++;
-					}
-
+                    }
+                    
 					for (int k = 33; k < 256; k++) {
 						if ((k > 64 && k < 91) || (k > 96 && k < 123)) {
-							char newChar = (char) k;
-							String newPattern = "" + newChar;
+							char ascii_char = (char) k;
+							String important_words = "" + ascii_char;
 
-							if (newPattern.equals(lineWordsTemp[j])) {
-								lineWordsTemp[j] = " ";
+							if (important_words.equals(row_wordset_test[j])) {
+								row_wordset_test[j] = " ";
 								deleted++;
 							}
 
 						} else if (k > 47 && k < 58) {
-							char newChar = (char) k;
-							String newPattern = "" + newChar;
+							char ascii_char = (char) k;
+							String important_words = "" + ascii_char;
 
-							if (newPattern.equals(lineWordsTemp[j])) {
-								lineWordsTemp[j] = " ";
+							if (important_words.equals(row_wordset_test[j])) {
+								row_wordset_test[j] = " ";
 								deleted++;
 							}
 
 						} else {
-							char newChar = (char) k;
-							String newPattern = "\\" + newChar;
+							char ascii_char = (char) k;
+							String important_words = "\\" + ascii_char;
 
-							if (newPattern.equals(lineWordsTemp[j])) {
-								lineWordsTemp[j] = " ";
+							if (important_words.equals(row_wordset_test[j])) {
+								row_wordset_test[j] = " ";
 								deleted++;
 							}
 
@@ -145,67 +142,67 @@ public class WordCount extends Configured implements Tool {
 				}
 			}
 
-			String[] lineWords = new String[lineWordsTemp.length - deleted];
-			int indexLineWords = 0;
+			String[] row_wordset = new String[row_wordset_test.length - deleted];
+			int index_wordset = 0;
 
-			for (int i = 0; i < lineWordsTemp.length; i++) {
-				if (!lineWordsTemp[i].equals(" ")) {
-					lineWords[indexLineWords] = lineWordsTemp[i];
-					indexLineWords++;
+			for (int i = 0; i < row_wordset_test.length; i++) {
+				if (!row_wordset_test[i].equals(" ")) {
+					row_wordset[index_wordset] = row_wordset_test[i];
+					index_wordset++;
 				}
 			}
 
-			String firstWord = "";
-			String secondWord = "";
-			String thirdWord = "";
-			for (int i = 0; i < lineWords.length; i++) {
-				//one word
-				firstWord = lineWords[i];
+			String first_word = "";
+			String second_word = "";
+			String third_word = "";
+			for (int i = 0; i < row_wordset.length; i++) {
+				//one word_collection
+				first_word = row_wordset[i];
 
-				word.set(firstWord);
-				output.collect(word, one);
+				word_collection.set(first_word);
+				output.collect(word_collection, one);
 				reporter.incrCounter(Counters.INPUT_WORDS, 1);
-				for (int j = i + 1; j < lineWords.length; j++) {
-					secondWord = lineWords[j];
+				for (int j = i + 1; j < row_wordset.length; j++) {
+					second_word = row_wordset[j];
 					//two words
-					if (firstWord.equals(secondWord)) {
+					if (first_word.equals(second_word)) {
 						continue;
 					}
 
-					String keyWord = firstWord + " " + secondWord;
-					String inverseKey = secondWord + " " + firstWord;
-					if (firstWord.compareTo(secondWord) > 0) {
-						keyWord = inverseKey;
+					String key_word = first_word + " " + second_word;
+					String inverse_key = second_word + " " + first_word;
+					if (first_word.compareTo(second_word) > 0) {
+						key_word = inverse_key;
 					}
 
-					word.set(keyWord);
-					output.collect(word, one);
+					word_collection.set(key_word);
+					output.collect(word_collection, one);
 					reporter.incrCounter(Counters.INPUT_WORDS, 1);
 
-					for (int k = j + 1; k < lineWords.length; k++) {
+					for (int k = j + 1; k < row_wordset.length; k++) {
 						//three words
-						thirdWord = lineWords[k];
+						third_word = row_wordset[k];
 
-						if (firstWord.equals(thirdWord) || secondWord.equals(thirdWord)
-								|| firstWord.equals(secondWord)) {
+						if (first_word.equals(third_word) || second_word.equals(third_word)
+								|| first_word.equals(second_word)) {
 							continue;
 						}
 
-						String first = min(min(firstWord, secondWord), thirdWord);
-						String last = max(max(firstWord, secondWord), thirdWord);
-						String middle = middleTerm(firstWord, secondWord, thirdWord);
+						String first = getMin(getMin(first_word, second_word), third_word);
+						String last = getMax(getMax(first_word, second_word), third_word);
+						String middle = middleTerm(first_word, second_word, third_word);
 
-						keyWord = first + " " + middle + " " + last;
-						word.set(keyWord);
-						output.collect(word, one);
+						key_word = first + " " + middle + " " + last;
+						word_collection.set(key_word);
+						output.collect(word_collection, one);
 						reporter.incrCounter(Counters.INPUT_WORDS, 1);
 					}
 				}
 			}
 
-			if ((++numRecords % 100) == 0) {
+			if ((++repetitions % 100) == 0) {
 				reporter.setStatus(
-						"Finished processing " + numRecords + " records " + "from the input file: " + inputFile);
+						"Finished processing " + repetitions + " records " + "from the input file: " + input_file);
 			}
 		}
 	}
@@ -219,27 +216,27 @@ public class WordCount extends Configured implements Tool {
 				sum += values.next().get();
 			}
 
-			boolean writeKey = true;
+			boolean write_key = true;
 
-			for (int j = 0; j < mostRepeatedWords.length; j++) {
-				if (mostRepeatedWords[j].equals(key)) {
-					writeKey = false;
+			for (int j = 0; j < most_repeated_words.length; j++) {
+				if (most_repeated_words[j].equals(key)) {
+					write_key = false;
 					break;
 				}
 			}
 
-			if (writeKey) {
+			if (write_key) {
 
-				for (int i = mostRepeatedValues.length - 1; i >= 0; i--) {
-					if (sum > mostRepeatedValues[i] && writeKey) {
-						if (i < mostRepeatedValues.length - 1) {
-							mostRepeatedValues[i + 1] = mostRepeatedValues[i];
-							mostRepeatedWords[i + 1] = mostRepeatedWords[i];
-							mostRepeatedValues[i] = 0;
-							mostRepeatedWords[i] = "";
+				for (int i = most_repeated_values.length - 1; i >= 0; i--) {
+					if (sum > most_repeated_values[i] && write_key) {
+						if (i < most_repeated_values.length - 1) {
+							most_repeated_values[i + 1] = most_repeated_values[i];
+							most_repeated_words[i + 1] = most_repeated_words[i];
+							most_repeated_values[i] = 0;
+							most_repeated_words[i] = "";
 						}
-						mostRepeatedValues[i] = sum;
-						mostRepeatedWords[i] = key.toString();
+						most_repeated_values[i] = sum;
+						most_repeated_words[i] = key.toString();
 					}
 				}
 
@@ -283,11 +280,11 @@ public class WordCount extends Configured implements Tool {
 	public static void main(String[] args) throws Exception {
 		int res = ToolRunner.run(new Configuration(), new WordCount(), args);
 
-		System.out.println("LA PALABRA MAS REPETIDA ES: " + mostRepeatedWords[3] + "-> " + mostRepeatedValues[3]);
+		System.out.println("LA PALABRA MAS REPETIDA ES: " + most_repeated_words[3] + " :\t" + most_repeated_values[3]);
 
 		System.exit(res);
 	}
 
-	static String[] mostRepeatedWords = { "", "", "", "", "" };
-	static int[] mostRepeatedValues = { 0, 0, 0, 0, 0 };
+	static String[] most_repeated_words = { "", "", "", "", "" };
+	static int[] most_repeated_values = { 0, 0, 0, 0, 0 };
 }
